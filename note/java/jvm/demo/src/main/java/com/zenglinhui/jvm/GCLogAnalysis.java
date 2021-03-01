@@ -38,9 +38,10 @@ public class GCLogAnalysis {
 
     }
 
-    // 生成对象
+    /**
+     * 生成对象
+      */
     private static Object generateGarbage(int max) {
-
         int randomSize = random.nextInt(max);
         int type = randomSize % 4;
         Object result = null;
@@ -66,7 +67,6 @@ public class GCLogAnalysis {
                 break;
         }
         return result;
-
     }
 
 }

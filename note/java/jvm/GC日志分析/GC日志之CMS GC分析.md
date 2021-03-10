@@ -10,7 +10,7 @@
 -Xmx512m
 -XX:+UseConcMarkSweepGC
 ```
-然后来分析一下打印的GC日志，最开始的是虚拟机相关的信息，以及内存相关的信息，这里就不重复介绍了
+然后来分析一下打印的GC日志，最开始的是虚拟机相关的信息，以及内存相关的信息，这里就不重复介绍了。因为 CMS 为并发标记清除垃圾收集器，设计的目地是为了避免在老年代GC时出现长时间的停顿，默认情况下，使用的并发线程数等于CPU内核数的 1/4。下面可以看到打印的日志比较多，这里还只有一部分的日志，因为 CMS 分了阶段，下面就来分析一下
 ```
 CommandLine flags: 
 -XX:InitialHeapSize=536870912 -XX:MaxHeapSize=536870912 -XX:MaxNewSize=178958336
@@ -19,6 +19,53 @@ CommandLine flags:
 -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -XX:+UseCompressedClassPointers 
 -XX:+UseCompressedOops -XX:+UseConcMarkSweepGC -XX:-UseLargePagesIndividualAllocation 
 -XX:+UseParNewGC
+2021-03-10T16:56:50.686+0800: 0.693: 
+[GC (Allocation Failure) 2021-03-10T16:56:50.686+0800: 0.693: 
+[ParNew: 139776K->17469K(157248K), 0.0066339 secs] 434643K->342073K(506816K), 0.0067025 secs] 
+[Times: user=0.16 sys=0.00, real=0.01 secs] 
+2021-03-10T16:56:50.692+0800: 0.700: 
+[GC (CMS Initial Mark) [1 CMS-initial-mark: 324604K(349568K)] 344982K(506816K), 0.0003371 secs] 
+[Times: user=0.00 sys=0.00, real=0.00 secs] 
+2021-03-10T16:56:50.693+0800: 0.701: 
+[CMS-concurrent-mark-start]
+2021-03-10T16:56:50.694+0800: 0.702: 
+[CMS-concurrent-mark: 0.001/0.001 secs] 
+[Times: user=0.00 sys=0.00, real=0.00 secs] 
+2021-03-10T16:56:50.694+0800: 0.702: 
+[CMS-concurrent-preclean-start]
+2021-03-10T16:56:50.694+0800: 0.702: 
+[CMS-concurrent-preclean: 0.000/0.000 secs] 
+[Times: user=0.00 sys=0.00, real=0.00 secs] 
+2021-03-10T16:56:50.694+0800: 0.702: 
+[CMS-concurrent-abortable-preclean-start]
+2021-03-10T16:56:50.694+0800: 0.702: 
+[CMS-concurrent-abortable-preclean: 0.000/0.000 secs] 
+[Times: user=0.00 sys=0.00, real=0.00 secs] 
+2021-03-10T16:56:50.694+0800: 0.702: 
+[GC (CMS Final Remark) 
+[YG occupancy: 36594 K (157248 K)]
+2021-03-10T16:56:50.694+0800: 0.702: 
+[Rescan (parallel) , 0.0005141 secs]
+2021-03-10T16:56:50.695+0800: 0.703: 
+[weak refs processing, 0.0000117 secs]
+2021-03-10T16:56:50.695+0800: 0.703: 
+[class unloading, 0.0002209 secs]
+2021-03-10T16:56:50.695+0800: 0.703: 
+[scrub symbol table, 0.0003169 secs]
+2021-03-10T16:56:50.696+0800: 0.703: 
+[scrub string table, 0.0000931 secs]
+[1 CMS-remark: 324604K(349568K)] 361198K(506816K), 0.0012410 secs] 
+[Times: user=0.00 sys=0.00, real=0.00 secs] 
+2021-03-10T16:56:50.696+0800: 0.703: 
+[CMS-concurrent-sweep-start]
+2021-03-10T16:56:50.696+0800: 0.704: 
+[CMS-concurrent-sweep: 0.001/0.001 secs] 
+[Times: user=0.00 sys=0.00, real=0.00 secs] 
+2021-03-10T16:56:50.696+0800: 0.704: 
+[CMS-concurrent-reset-start]
+2021-03-10T16:56:50.697+0800: 0.704: 
+[CMS-concurrent-reset: 0.000/0.000 secs] 
+[Times: user=0.00 sys=0.00, real=0.00 secs] 
 ```
 1. 日志开头是系统以及内存的一些信息，JVM的版本、内存页大小、物理内存大小、swap大小，以及JVM的一些参数
 2. 上面的日志放了两次GC的事件，第一次是清理了年轻代，第二次是清理了整个堆区，来看一下这两次分别有区别

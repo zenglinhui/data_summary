@@ -8,7 +8,7 @@
 2. 输出GC日志详情
 (1). 在命令行输入 java -XX:+PrintGCDetails GCLogAnalysis
 (2). 如果用的是 IDEA 集成工具，可以在启动的配置文件中的 VM options 属性来设置 -XX:+PrintGCDetails 这个参数
-pic\java\jvm\GC日志分析\GCLogAnalysis1.png
+![pic\GCLogAnalysis1.png](pic\GCLogAnalysis1.png)
 (3). 图中看 Heap 堆内存使用的情况，里面有 PSYoungGen、ParOldGen、Metaspace 这三个内存区域的情况。
     年轻代总计 1020416K，使用量 221119K
     其中 eden space 占了 823296K，用了 2% used
@@ -50,11 +50,12 @@ CommandLine flags: -XX:InitialHeapSize=266197632 -XX:MaxHeapSize=4259162112 -XX:
 ```
 4. 打印GC事件发生日期和时间
 (1). 在上面我们可以知道，加上```-Xloggc:```这个参数时，会自动加上```-XX:+PrintGCTimeStamps``` 这个参数，会打印出JVM启动后经过的时间。现在指定日期参数 ```-XX:+PrintGCDateStamps```会打印出当前的年月日时分秒+启动后经过的时间
-pic\java\jvm\GC日志分析\GCLogAnalysis2.png
+![pic\GCLogAnalysis2.png](pic\GCLogAnalysis2.png)
 5. 指定堆内存大小
 (1). 在 CommandLine flags 中有两个参数 ```-XX:InitialHeapSize=266197632 -XX:MaxHeapSize=4259162112```等价于 ```-Xms256m -Xmx4g```，上面是没有指定堆大小时的默认值，如果有需要可以手动指定
 (2). 在指定```-Xms512m -Xmx512m``` 这两个参数时，GC日志文件中会打印出下面这两个值，说明已经起作用了，还有一个现象是 Full GC 的次数多了，说明指定的最大堆内存比较小，以后在生产环境查找问题这是一个参考点
-```CommandLine flags: -XX:InitialHeapSize=536870912 -XX:MaxHeapSize=536870912
+```
+CommandLine flags: -XX:InitialHeapSize=536870912 -XX:MaxHeapSize=536870912
 ```
 5. 指定垃圾收集器
 (1). 在JDK8里面我们可以使用下面几种垃圾收集器

@@ -204,10 +204,8 @@ CommandLine flags: -XX:InitialHeapSize=536870912 -XX:MaxHeapSize=536870912 -XX:+
 第七行 [Free CSet: 0.0 ms] 将回收集中被释放的小堆归还所消耗的时间，以便能用来分配新的对象。
 这次GC对应的示意图：
 ![pic/GCLogAnalysis4.png](pic/GCLogAnalysis4.png)
-
-
-
 (3). Concurrent Marking(并发标记)
+当堆内存的总体使用比例达到一定数值，就会触发并发标记。这个默认比例是 45%，可以通过JVM参数 InitiatingHeapOccupancyPercent 来设置。和CMS一样，G1的并发标记也是由多个阶段组成，其中一些阶段是完全并发的，还有一些阶段则会暂停应用线程。
 ```
 1 2021-03-15T17:49:08.006+0800: 0.412: 
 2 [GC pause (G1 Humongous Allocation) (young) (initial-mark), 0.0107640 secs]
@@ -229,102 +227,71 @@ CommandLine flags: -XX:InitialHeapSize=536870912 -XX:MaxHeapSize=536870912 -XX:+
 18 2021-03-15T17:49:08.020+0800: 0.426: [GC cleanup 228M->228M(512M), 0.0005037 secs]
 19 [Times: user=0.00 sys=0.00, real=0.00 secs] 
 ```
-上面是 CMS Full GC 的日志，有点长，因为 CMS 在对老年代进行垃圾收集时分不同的阶段，每个阶段都有自己的日志。在实际的运行中，CMS 在进行老年代并发垃圾收集时，还会有多次的 Minor GC，所以 Full GC 日志中可能会有多次的 Minor GC 日志。至于这里会出现这种情况，可能是因为CMS的GC线程和应用程序的线程一起并发运行，还会有对象分配，所以 Minor GC 还是会发生。下面来依次分析这些阶段。
-第一阶段：CMS-initial-mark(初始标记)
-这个阶段会 STW 暂停，标记所有的根对象，包括 GC ROOT 直接引用的对象，以及被年轻代中所有存活对象所引用的对象。
-现在来分析一下这一阶段的日志：
+第一阶段： Initial Mark(初始标记)，这里是因为大对象分配引起GC，当然这里不止这一个原因，也有可能是默认GC原因或者 to-space exhausted(空间用完) 等，下面是日志：
 ```
-1 2021-03-10T16:56:50.692+0800: 0.700: 
-2 [GC (CMS Initial Mark) [1 CMS-initial-mark: 324604K(349568K)] 344982K(506816K), 0.0003371 secs] 
-3 [Times: user=0.00 sys=0.00, real=0.00 secs] 
+1 [GC pause (G1 Humongous Allocation) (young) (initial-mark), 0.0107640 secs]
 ```
-1 表示这次事件发生的时间，跟前面介绍的一样。
-2 表示这次阶段为 "Initial Mark"，标记所有 GC Root。324604K(349568K) 表示老年代的使用量、老年代的空间大小，344982K(506816K) 表示当前堆的使用量和大小，0.0003371 secs 表示这次标记的时间，时间灰常短，只有0.3毫秒，因为要标记的 Root 数量很少。
-这里突然想到一个问题，就是年轻代和老年代判断垃圾对象的问题，最开始的方式是用的引用计数，因为引用计数会有循环引用的问题，造成内存溢出、从而变成内存泄漏，所以现在改成可达性分析，什么是可达性分析？就是上面提到的 GC Root 能关联到的对象，也叫对象引用。那么问题来了，年轻代和老年代在标记对象时，用什么方式去标记效率才是最好的？这里给出我的想法：如果是年轻代，大部分对象是朝生夕灭的，所以标记存活对象是最好的;如果是老年代，只有小部分对象才需要清理，所以标记不需要的对象是最好的(但是老年代实际上也是标记存活的对象)。
-3 表示这次标记事件的发生的秒数，user 表示GC线程所用的时间，sys 表示系统调用用的时间，real 表示应用程序暂停的时间。这里可以看到这个标记时间可以忽略。
-第二阶段：Concurrent Mark(并发标记)
-在并发标记阶段，从前一阶段 "Initial Mark" 找到的 ROOT 开始，遍历老年代并标记所有存活对象，这个阶段是并发执行的。所谓并发执行就是 GC 线程和应用线程一起执行。
+第二阶段：Root Region Scan(Root区扫描)，此阶段标记所有从“根区域”可达的存活对象。根区域包括：非空的区域、以及在标记过程中不得不收集的区域。下面是日志：
 ```
-4 2021-03-10T16:56:50.693+0800: 0.701: 
-5 [CMS-concurrent-mark-start]
-6 2021-03-10T16:56:50.694+0800: 0.702: 
-7 [CMS-concurrent-mark: 0.001/0.001 secs] 
-8 [Times: user=0.00 sys=0.00, real=0.00 secs] 
+12 2021-03-15T17:49:08.017+0800: 0.423: [GC concurrent-root-region-scan-start]
+13 2021-03-15T17:49:08.017+0800: 0.423: [GC concurrent-root-region-scan-end, 0.0005681 secs]
 ```
-5 表示这是并发标记阶段。
-7 表示这次并发标记用的时间，0.001/0.001 secs 单位秒， 分别是 GC 线程消耗时间和实际消耗时间。
-8 表示并发标记 user(GC线程使用的时间)、sys(系统用的时间)、real(程序暂停时间)，因为是并发执行，这段时间应用程序也在执行，所以这个时间没多大意义。
-第三阶段：Concurrent Preclean(并发预清理)
-和应用线程并发执行，不用STW。
+第三阶段：Concurrent Mark(并发标记)
 ```
-9 2021-03-10T16:56:50.694+0800: 0.702: 
-10 [CMS-concurrent-preclean-start]
-11 2021-03-10T16:56:50.694+0800: 0.702: 
-12 [CMS-concurrent-preclean: 0.000/0.000 secs] 
-13 [Times: user=0.00 sys=0.00, real=0.00 secs] 
+14 2021-03-15T17:49:08.017+0800: 0.423: [GC concurrent-mark-start]
+15 2021-03-15T17:49:08.018+0800: 0.424: [GC concurrent-mark-end, 0.0008918 secs]
 ```
-10 表示这是预清理阶段日志，这个阶段会统计前面的并发标记阶段执行过程中发生改变的对象。
-12 表示这个阶段所用的时间，分别是GC线程运行时间和实际占用的时间。
-13 跟并发标记阶段表示的意义一样，因为是并发执行，没多大意义。
-第四阶段：Concurrent Abortable Preclean(可取消的并发预清理)
-这个阶段尽可能的多预清理一些，一直循环，直到某一个退出条件满足，就退出。这个阶段完成的工作对 "Final Remark" 的 STW 停顿时间有较大的影响。
+第四阶段：Remark(再次标记): 也叫最终标记，跟CMS的差不多，因为并发标记阶段，可能有些对象发生了改变，所以需要再次标记，下面是日志：
 ```
-14 2021-03-10T16:56:50.694+0800: 0.702: 
-15 [CMS-concurrent-abortable-preclean-start]
-16 2021-03-10T16:56:50.694+0800: 0.702: 
-17 [CMS-concurrent-abortable-preclean: 0.000/0.000 secs] 
-18 [Times: user=0.00 sys=0.00, real=0.00 secs] 
+16 2021-03-15T17:49:08.018+0800: 0.424: [GC remark 
+2021-03-15T17:49:08.018+0800: 0.424: [Finalize Marking, 0.0002256 secs] 
+2021-03-15T17:49:08.019+0800: 0.424: [GC ref-proc, 0.0000637 secs] 
+2021-03-15T17:49:08.019+0800: 0.424: [Unloading, 0.0006521 secs], 0.0014288 secs]
 ```
-第五阶段：Final Remark(最终标记)
-最终标记是这次GC中的第二次，也是最后一次的STW停顿。本阶段的目标是完成老年代中所有存活对象的标记。因为之前的预清理阶段是并发执行的，有可能GC线程跟不上应用程序的修改速度，所以需要一次STW暂停来处理各种复杂情况。等执行完最终标记阶段，老年代中所有存活对象都被标记上了，后续就是把不使用的对象清理掉，回收老年代的空间。
+第五阶段：Cleanup(清理)
+最后这个清理阶段为即将到来的转移阶段做准备，统计小堆块中所有存活的对象，并将小堆块进行排序，以提升GC的效率。此阶段也为下一次标记执行必需的所有整理工作(house-keeping activities)：维护并发标记的内部状态。
+所有不包含存活对象的小堆块在此阶段都被回收了，有一部分任务是并发的，例如空堆区的回收，还有大部分的存活率计算，此阶段也需要一个短暂的STW暂停，才能不受应用线程的影响并完成作业，下面是对应的日志：
 ```
-19 2021-03-10T16:56:50.694+0800: 0.702: 
-20 [GC (CMS Final Remark) 
-21 [YG occupancy: 36594 K (157248 K)]
-22 2021-03-10T16:56:50.694+0800: 0.702: 
-23 [Rescan (parallel) , 0.0005141 secs]
-24 2021-03-10T16:56:50.695+0800: 0.703: 
-25 [weak refs processing, 0.0000117 secs]
-26 2021-03-10T16:56:50.695+0800: 0.703: 
-27 [class unloading, 0.0002209 secs]
-28 2021-03-10T16:56:50.695+0800: 0.703: 
-29 [scrub symbol table, 0.0003169 secs]
-30 2021-03-10T16:56:50.696+0800: 0.703: 
-31 [scrub string table, 0.0000931 secs]
-32 [1 CMS-remark: 324604K(349568K)] 361198K(506816K), 0.0012410 secs] 
-33 [Times: user=0.00 sys=0.00, real=0.00 secs] 
+18 2021-03-15T17:49:08.020+0800: 0.426: [GC cleanup 228M->228M(512M), 0.0005037 secs]
 ```
-20 CMS Final Remark 表示这是最终标记阶段，会标记老年代中所有的存活对象，包括此前的并发标记过程中有变化(创建/修改)的引用。
-21 YG occupancy: 36594 K (157248 K) 表示当前年轻代的使用量和总容量。
-23 Rescan (parallel) , 0.0005141 secs 在程序暂停后进行重新扫描(Rescan)，以完成存活对象的标记。这是并行执行的(parallel)，消耗的时间是 0.0005141 secs 秒。
-25 weak refs processing, 0.0000117 secs 第一个子阶段：处理弱引用的时间。
-27 class unloading, 0.0002209 secs 第二个子阶段：卸载不使用的类时间。
-29 scrub symbol table, 0.0003169 secs 第三个子阶段：清理符号表，即对应class的metadata中的符号表(symbol tables)。
-31 scrub string table, 0.0000931 secs 第四个子阶段：清理内联字符串对应的 string tables。
-32 [1 CMS-remark: 324604K(349568K)] 361198K(506816K), 0.0012410 secs 此阶段完成后老年代的使用量和总容量、以及整个堆内存的使用量和总容量。
-33 Times: user=0.00 sys=0.00, real=0.00 secs 这次CMS GC 持续的时间。
-第六阶段：Concurrent Sweep(并发清除)
-这个阶段是和应用线程一起执行，来删除不再使用的对象，回收内存空间。
+标记周期一般只在碰到 region 中一个存活对象都没有的情况下，才会顺带处理，大多数情况下是不释放内存的
+![pic/GCLogAnalysis5.png](pic/GCLogAnalysis5.png)
+(4). Evacuation Pause(mixed)(转移暂停：混合模式)
+并发标记完成后，G1有可能会执行一次混合收集(mixed collection)，就是不只清理年轻代，一部分老年代区域也加入到 collection set 中。混合模式的转移暂停(Evacuation pause)不一定紧跟并发标记阶段，在并发标记与混合转移暂停之间，可能会有多次的 young 模式的转移暂停。
+mixed：指这次GC事件混合着处理年轻代和老年代的region，这也是G1等增量垃圾收集器的特色。ZGC等最新的垃圾收集器则不使用分代算法。
 ```
-34 2021-03-10T16:56:50.696+0800: 0.703: 
-35 [CMS-concurrent-sweep-start]
-36 2021-03-10T16:56:50.696+0800: 0.704: 
-37 [CMS-concurrent-sweep: 0.001/0.001 secs] 
-38 [Times: user=0.00 sys=0.00, real=0.00 secs] 
+1 2021-03-15T17:49:08.051+0800: 0.457: [GC pause (G1 Evacuation Pause) (mixed), 0.0038469 secs]
+2   [Parallel Time: 3.1 ms, GC Workers: 10]
+3      ......
+4      [Update RS (ms): Min: 0.0, Avg: 0.0, Max: 0.1, Diff: 0.1, Sum: 0.4]
+5         [Processed Buffers: Min: 0, Avg: 1.2, Max: 3, Diff: 3, Sum: 12]
+6      [Scan RS (ms): Min: 0.0, Avg: 0.0, Max: 0.0, Diff: 0.0, Sum: 0.1]
+7      ......
+8   [Code Root Fixup: 0.0 ms]
+9   [Code Root Purge: 0.0 ms]
+10   [Clear CT: 0.2 ms]
+11   [Other: 0.5 ms]
+12      [Choose CSet: 0.0 ms]
+13      [Ref Proc: 0.2 ms]
+14      [Ref Enq: 0.0 ms]
+15      [Redirty Cards: 0.2 ms]
+16      [Humongous Register: 0.0 ms]
+17      [Humongous Reclaim: 0.0 ms]
+18      [Free CSet: 0.0 ms]
+19   [Eden: 5120.0K(5120.0K)->0.0B(85.0M) Survivors: 24.0M->1024.0K Heap: 331.2M(512.0M)->312.2M(512.0M)]
+20 [Times: user=0.00 sys=0.00, real=0.00 secs]  
 ```
-37 CMS-concurrent-sweep 0.001/0.001 secs 表示并发清除老年代中所有未被标记的对象。0.001/0.001 secs 表示持续时间和实际占用时间，这个值会四会五入，精确到小数点后3位。
-第七阶段：Concurrent Reset(并发重置)
-此阶段与应用程序线程并发执行，重置CMS算法相关的内部数据结构，下一次触发GC时就可以直接使用。
-```
-39 2021-03-10T16:56:50.696+0800: 0.704: 
-40 [CMS-concurrent-reset-start]
-41 2021-03-10T16:56:50.697+0800: 0.704: 
-42 [CMS-concurrent-reset: 0.000/0.000 secs] 
-43 [Times: user=0.00 sys=0.00, real=0.00 secs] 
-```
-42 CMS-concurrent-reset: 0.000/0.000 secs 表示重置CMS算法的内部数据结构，为下一次GC循环做准备。后面是这个阶段持续时间和实际占用的时间。
+有些前面都说过了，这里就不重复了，看一下没有分析过的日志。
+第四行 [Update RS (ms): Min: 0.0, Avg: 0.0, Max: 0.1, Diff: 0.1, Sum: 0.4] 表示处理 Remembered Sets，这个是并发处理的，因为在实际垃圾收集之前，必须确保缓冲区中的 card 得到处理。如果 card 数量很多，则GC并发线程负载可能就会很高，可能的原因是修改的字段过多，或者 CPU 资源受限。
+第五行 [Processed Buffers: Min: 0, Avg: 1.2, Max: 3, Diff: 3, Sum: 12] 表示各个工作线程处理了多少个本地缓冲区(local buffer)。
+第六行 [Scan RS (ms): Min: 0.0, Avg: 0.0, Max: 0.0, Diff: 0.0, Sum: 0.1] 表示用了多长时间扫描来自 RSet 的引用。
+第十行 [Clear CT: 0.2 ms] 表示清理 card table 中 cards 的时间，清理只是简单地删除“脏”状态，此状态用来标识一个字段是否被更新，供 Remembered Sets 使用。
+第十五行 [Redirty Cards: 0.2 ms] 表示将 card table 中适当的位置标记为 dirty 所花费的时间，适当的位置是由“GC本身执行的堆内存改变所决定的”，例如引用排队等。
+(5). Full GC(Allocation Failure)
+Full GC跟其它的垃圾收集器的 Full GC 差不多，会回收 Eden、Survivors、Heap(包含老年代)、Metaspace 区，其中 Eden、Survivors 区，一般情况下会全部回收掉。G1是一款自适应的增量垃圾收集器，只有在内存严重不足的情况下才会发生 Full GC，比如堆空间不足或者 to-space 空间不足，本次没有模拟出来 Full GC，有兴趣的话可以把内存给小一点，再跑几次试试。
+
 # 总结
-CMS执行完之后，没有直观的地址可以看老年代的使用量，只能用两次 Minor GC 来推算，然后根据(总堆内存的使用量-年轻代的使用量) / (总堆内存-年轻代内存) = 老年代使用率(取值为第二次GC之前的值)，如果使用率比较高的话，说明内存分配小了，那就需要加大内存。从串行 GC、并行 GC、到 CMS，垃圾收集器一直在减少停顿时间做了很多工作，CMS 有很大一部分阶段是可以和应用线程并发执行的，减少每次暂停的时间。CMS 也有一些缺点，最主要的是老年代内存碎片的问题，在堆内存较大的情况下，暂停时间是不可预测的。下一篇会分析一下G1的日志。
+在堆内存较大的情况下(8G+)，如果G1发生了 Full GC，暂停时间可能会退化，达到几十秒或者更多。如果发生了这种情况，就需要我们进行排查和分析，确定是否需要修改GC配置或者增加内存，还是需要修改程序逻辑。
 
 
 

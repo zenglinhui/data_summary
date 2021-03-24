@@ -156,54 +156,78 @@ CommandLine flags: -XX:InitialHeapSize=536870912 -XX:MaxHeapSize=536870912 -XX:+
 第四行 [Code Root Fixup: 0.0 ms] 表示释放用于管理并行活动的内部数据，一般时间接近于0，因为这个可以并行执行的。
 第五行 [Code Root Purge: 0.0 ms] 表示清理其他部分数据，时间基本上也是0，因为也是并行的。
 第七行 [Other: 0.5 ms] 表示其它活动消耗的时间，大部分是并行执行。
-第八行 [Eden: 101.0M(101.0M)->0.0B(242.0M) Survivors: 11.0M->14.0M Heap: 241.5M(512.0M)->152.3M(512.0M)] ``` Eden: 101.0M(101.0M)->0.0B(242.0M) ``` 表示暂停之前和暂停之后，Eden 区的使用量(总容量);```Survivors: 11.0M->14.0M``` 表示GC暂停前后，存活区的使用量;```Heap: 241.5M(512.0M)->152.3M(512.0M)```
-暂停前后，整个堆内存的使用量(总容量)。
+第八行 [Eden: 101.0M(101.0M)->0.0B(242.0M) Survivors: 11.0M->14.0M Heap: 241.5M(512.0M)->152.3M(512.0M)] ``` Eden: 101.0M(101.0M)->0.0B(242.0M) ``` 表示暂停之前和暂停之后，Eden 区的使用量(总容量);```Survivors: 11.0M->14.0M``` 表示GC暂停前后，存活区的使用量;```Heap: 241.5M(512.0M)->152.3M(512.0M)```暂停前后，整个堆内存的使用量(总容量)。
 第九行 [Times: user=0.02 sys=0.13, real=0.01 secs] 表示这次GC花费的时间，user 线程用的时间，sys 系统用的时间，real 程序暂停的时间。
-(2). Full GC 日志内容：
+(2). worker 线程
 ```
-1 2021-03-10T16:56:50.692+0800: 0.700: 
-2 [GC (CMS Initial Mark) [1 CMS-initial-mark: 324604K(349568K)] 344982K(506816K), 0.0003371 secs] 
-3 [Times: user=0.00 sys=0.00, real=0.00 secs] 
-4 2021-03-10T16:56:50.693+0800: 0.701: 
-5 [CMS-concurrent-mark-start]
-6 2021-03-10T16:56:50.694+0800: 0.702: 
-7 [CMS-concurrent-mark: 0.001/0.001 secs] 
-8 [Times: user=0.00 sys=0.00, real=0.00 secs] 
-9 2021-03-10T16:56:50.694+0800: 0.702: 
-10 [CMS-concurrent-preclean-start]
-11 2021-03-10T16:56:50.694+0800: 0.702: 
-12 [CMS-concurrent-preclean: 0.000/0.000 secs] 
-13 [Times: user=0.00 sys=0.00, real=0.00 secs] 
-14 2021-03-10T16:56:50.694+0800: 0.702: 
-15 [CMS-concurrent-abortable-preclean-start]
-16 2021-03-10T16:56:50.694+0800: 0.702: 
-17 [CMS-concurrent-abortable-preclean: 0.000/0.000 secs] 
-18 [Times: user=0.00 sys=0.00, real=0.00 secs] 
-19 2021-03-10T16:56:50.694+0800: 0.702: 
-20 [GC (CMS Final Remark) 
-21 [YG occupancy: 36594 K (157248 K)]
-22 2021-03-10T16:56:50.694+0800: 0.702: 
-23 [Rescan (parallel) , 0.0005141 secs]
-24 2021-03-10T16:56:50.695+0800: 0.703: 
-25 [weak refs processing, 0.0000117 secs]
-26 2021-03-10T16:56:50.695+0800: 0.703: 
-27 [class unloading, 0.0002209 secs]
-28 2021-03-10T16:56:50.695+0800: 0.703: 
-29 [scrub symbol table, 0.0003169 secs]
-30 2021-03-10T16:56:50.696+0800: 0.703: 
-31 [scrub string table, 0.0000931 secs]
-32 [1 CMS-remark: 324604K(349568K)] 361198K(506816K), 0.0012410 secs] 
-33 [Times: user=0.00 sys=0.00, real=0.00 secs] 
-34 2021-03-10T16:56:50.696+0800: 0.703: 
-35 [CMS-concurrent-sweep-start]
-36 2021-03-10T16:56:50.696+0800: 0.704: 
-37 [CMS-concurrent-sweep: 0.001/0.001 secs] 
-38 [Times: user=0.00 sys=0.00, real=0.00 secs] 
-39 2021-03-10T16:56:50.696+0800: 0.704: 
-40 [CMS-concurrent-reset-start]
-41 2021-03-10T16:56:50.697+0800: 0.704: 
-42 [CMS-concurrent-reset: 0.000/0.000 secs] 
-43 [Times: user=0.00 sys=0.00, real=0.00 secs] 
+1   [Parallel Time: 5.6 ms, GC Workers: 10]
+2      [GC Worker Start (ms): Min: 358.0, Avg: 358.1, Max: 358.2, Diff: 0.2]
+3      [Ext Root Scanning (ms): Min: 0.0, Avg: 0.1, Max: 0.2, Diff: 0.1, Sum: 0.8]
+4      [Update RS (ms): Min: 0.1, Avg: 0.1, Max: 0.1, Diff: 0.1, Sum: 1.0]
+5         [Processed Buffers: Min: 0, Avg: 1.5, Max: 2, Diff: 2, Sum: 15]
+6      [Scan RS (ms): Min: 0.0, Avg: 0.0, Max: 0.0, Diff: 0.0, Sum: 0.1]
+7      [Code Root Scanning (ms): Min: 0.0, Avg: 0.0, Max: 0.0, Diff: 0.0, Sum: 0.0]
+8      [Object Copy (ms): Min: 5.2, Avg: 5.2, Max: 5.3, Diff: 0.2, Sum: 52.2]
+9      [Termination (ms): Min: 0.0, Avg: 0.1, Max: 0.2, Diff: 0.2, Sum: 1.2]
+10         [Termination Attempts: Min: 1, Avg: 1.4, Max: 2, Diff: 1, Sum: 14]
+11      [GC Worker Other (ms): Min: 0.0, Avg: 0.0, Max: 0.0, Diff: 0.0, Sum: 0.1]
+12      [GC Worker Total (ms): Min: 5.4, Avg: 5.5, Max: 5.6, Diff: 0.2, Sum: 55.3]
+13      [GC Worker End (ms): Min: 363.6, Avg: 363.6, Max: 363.6, Diff: 0.0]
+```
+第一行 [Parallel Time: 5.6 ms, GC Workers: 10] 表示10个线程并行执行，花了 5.6ms时间，上面也介绍过。
+第二行 [GC Worker Start (ms): Min: 358.0, Avg: 358.1, Max: 358.2, Diff: 0.2] 表示GC的工作线程开始启动时，相对于 pause 开始时间的毫秒间隔。如果 min 和 max 差别太大，说明其他进程使用的线程数量多，挤占了GC的可用时间。
+第三行 [Ext Root Scanning (ms): Min: 0.0, Avg: 0.1, Max: 0.2, Diff: 0.1, Sum: 0.8] 表示用了多长时间来扫描堆外内存(non-heap)的GC ROOT，如 “classLoaders、JNI引用、JVM系统Root等”。后面表示运行的时间，Sum 是指CPU时间。
+第四到第六行 [Update RS (ms)]、[Processed Buffers]、[Scan RS (ms)] 这三部分也是类似的操作， RS 是 Remembered Set 编写。
+第七行 [Code Root Scanning (ms): Min: 0.0, Avg: 0.0, Max: 0.0, Diff: 0.0, Sum: 0.0] 表示扫描实际代码中的 root 用了多长时间;例如线程栈中的局部变量。
+第八行 [Object Copy (ms): Min: 5.2, Avg: 5.2, Max: 5.3, Diff: 0.2, Sum: 52.2] 表示用了多长时间来拷贝回收集中的存活对象。
+第九行 [Termination (ms): Min: 0.0, Avg: 0.1, Max: 0.2, Diff: 0.2, Sum: 1.2] 表示 GC 的工作线程用了多长时间来确保自身可以安全的停止，这段时间内什么都不做，完成后GC线程就终止运行了，所以叫终止等待时间。
+第十行 [Termination Attempts: Min: 1, Avg: 1.4, Max: 2, Diff: 1, Sum: 14] 表示 GC 的工作线程尝试多少次 try 和 teminate。如果工作线程发现还有一些任务没处理完，则暂时不能终止。
+第十一行 [GC Worker Other (ms): Min: 0.0, Avg: 0.0, Max: 0.0, Diff: 0.0, Sum: 0.1] 其他的小任务，因为时间很短，所以打日志时放到了一起。
+第十二行 [GC Worker Total (ms): Min: 5.4, Avg: 5.5, Max: 5.6, Diff: 0.2, Sum: 55.3] GC 工作线程时间的总计。
+第十三行 [GC Worker End (ms): Min: 363.6, Avg: 363.6, Max: 363.6, Diff: 0.0] GC 工作线程完成作业的时候，相当于此次GC暂停开始时间的毫秒数。一般来说这部分数字大概相等，否则就说明有太多的线程被挂起。
+此外，在转移暂停期间，还有一些琐碎的小任务：
+```
+1 [Other: 0.5 ms]
+2      [Choose CSet: 0.0 ms]
+3      [Ref Proc: 0.1 ms]
+4      [Ref Enq: 0.0 ms]
+5      [Redirty Cards: 0.2 ms]
+6      [Humongous Register: 0.0 ms]
+7      [Humongous Reclaim: 0.0 ms]
+8      [Free CSet: 0.0 ms]
+```
+第一行 [Other: 0.5 ms] 表示其他活动消耗的时间，很多操作都是并行的。
+第二行 [Choose CSet: 0.0 ms] 选择 CSet 消耗的时间；是 Collection Set 的缩写。
+第三行 [Ref Proc: 0.1 ms] 处理非强引用(non-strong)的时间，进行清理或者决定是否需要清理。
+第四行 [Ref Enq: 0.0 ms] 用来将剩下的 non-strong 引用排列到合适的 ReferenceQueue 中。
+第五、六行 [Humongous Register: 0.0 ms]、[Humongous Reclaim: 0.0 ms] 处理大对象相关的部分。
+第七行 [Free CSet: 0.0 ms] 将回收集中被释放的小堆归还所消耗的时间，以便能用来分配新的对象。
+这次GC对应的示意图：
+![pic/GCLogAnalysis4.png](pic/GCLogAnalysis4.png)
+
+
+
+(3). Concurrent Marking(并发标记)
+```
+1 2021-03-15T17:49:08.006+0800: 0.412: 
+2 [GC pause (G1 Humongous Allocation) (young) (initial-mark), 0.0107640 secs]
+3    [Parallel Time: 9.4 ms, GC Workers: 10]
+4       ......
+5    [Code Root Fixup: 0.0 ms]
+6    [Code Root Purge: 0.0 ms]
+7    [Clear CT: 0.4 ms]
+8    [Other: 0.9 ms]
+9      ......
+10   [Eden: 187.0M(242.0M)->0.0B(157.0M) Survivors: 14.0M->32.0M Heap: 382.5M(512.0M)->211.5M(512.0M)]
+11 [Times: user=0.00 sys=0.00, real=0.01 secs] 
+12 2021-03-15T17:49:08.017+0800: 0.423: [GC concurrent-root-region-scan-start]
+13 2021-03-15T17:49:08.017+0800: 0.423: [GC concurrent-root-region-scan-end, 0.0005681 secs]
+14 2021-03-15T17:49:08.017+0800: 0.423: [GC concurrent-mark-start]
+15 2021-03-15T17:49:08.018+0800: 0.424: [GC concurrent-mark-end, 0.0008918 secs]
+16 2021-03-15T17:49:08.018+0800: 0.424: [GC remark 2021-03-15T17:49:08.018+0800: 0.424: [Finalize Marking, 0.0002256 secs] 2021-03-15T17:49:08.019+0800: 0.424: [GC ref-proc, 0.0000637 secs] 2021-03-15T17:49:08.019+0800: 0.424: [Unloading, 0.0006521 secs], 0.0014288 secs]
+17 [Times: user=0.00 sys=0.00, real=0.00 secs] 
+18 2021-03-15T17:49:08.020+0800: 0.426: [GC cleanup 228M->228M(512M), 0.0005037 secs]
+19 [Times: user=0.00 sys=0.00, real=0.00 secs] 
 ```
 上面是 CMS Full GC 的日志，有点长，因为 CMS 在对老年代进行垃圾收集时分不同的阶段，每个阶段都有自己的日志。在实际的运行中，CMS 在进行老年代并发垃圾收集时，还会有多次的 Minor GC，所以 Full GC 日志中可能会有多次的 Minor GC 日志。至于这里会出现这种情况，可能是因为CMS的GC线程和应用程序的线程一起并发运行，还会有对象分配，所以 Minor GC 还是会发生。下面来依次分析这些阶段。
 第一阶段：CMS-initial-mark(初始标记)

@@ -8,6 +8,7 @@ import com.zenglh.jdk.spi.DataSourceSpi;
  */
 public class MysqlDataSource implements DataSourceSpi {
 
+    @Override
     public void connection(String urlName) {
         System.out.println("MySQL Connection url:" + urlName);
     }

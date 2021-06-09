@@ -66,7 +66,7 @@ public final class SpiLoader<A> {
                 cachedDefaultName = value;
             }
         }
-        Map<String, Class<?>> classMap = new HashMap<String, Class<?>>(16);
+        Map<String, Class<?>> classMap = new HashMap<>(4);
         loadDirectory(classMap);
         return classMap;
     }

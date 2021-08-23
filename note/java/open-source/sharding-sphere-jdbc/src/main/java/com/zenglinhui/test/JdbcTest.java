@@ -7,6 +7,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 
 /**
+ * Test JDBC
  * @author zenglh
  * @date 2021/8/23 17:17
  */

@@ -18,6 +18,7 @@ public class JavassistTest {
         m.insertBefore("{ System.out.println(\"start\");}");
         m.insertAfter("System.out.println(\"end\");");
         Class c = cc.toClass();
+        // 可以指定路径
         cc.writeFile();
         Base h = (Base) c.newInstance();
         h.process();

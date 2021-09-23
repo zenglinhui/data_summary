@@ -1,0 +1,6 @@
+Mainfest-Version: 1.0
+Agent-Class: com.zenglinhui.bytecode.instrument.TestAgent
+Created-By: zenglinhui
+Can-Redefine-Classes: true
+Can-Retransform-Classes: true
+Boot-Class-Path: javassist-3.24.0-GA

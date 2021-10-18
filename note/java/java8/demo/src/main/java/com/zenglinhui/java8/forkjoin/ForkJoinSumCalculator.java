@@ -40,10 +40,12 @@ public class ForkJoinSumCalculator extends RecursiveTask<Long> {
         if (length <= THRESHOLD) {
             return computeSequentially();
         }
-        ForkJoinSumCalculator leftTask = new ForkJoinSumCalculator(numbers, start, start + length / 2);
+        int temp = start + length / 2;
+        System.out.println("start - end - temp :" + start + "-" + end + "-" + temp);
+        ForkJoinSumCalculator leftTask = new ForkJoinSumCalculator(numbers, start, temp);
         leftTask.fork();
 
-        ForkJoinSumCalculator rightTask = new ForkJoinSumCalculator(numbers, start + length / 2, end);
+        ForkJoinSumCalculator rightTask = new ForkJoinSumCalculator(numbers, temp, end);
         long rightResult = rightTask.compute();
         long leftResult = leftTask.join();
         return leftResult + rightResult;

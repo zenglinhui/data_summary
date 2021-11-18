@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.druid_demo.mapper.UserMapper">
+    <resultMap id="baseResultMap" type="com.example.druid_demo.model.User">
+        <id column="id" jdbcType="BIGINT" property="id" />
+        <result column="name" jdbcType="VARCHAR" property="name" />
+        <result column="password" jdbcType="VARCHAR" property="password" />
+    </resultMap>
+    <sql id="BaseTable">
+        user
+    </sql>
+    <insert id="insertUser" useGeneratedKeys="true" keyColumn="id" keyProperty="id"
+            parameterType="com.example.druid_demo.model.User">
+        insert into user(name, password) values(#{name}, #{password})
+    </insert>
+    <delete id="deleteUser">
+        delete from user where id = #{userId}
+    </delete>
+    <select id="selectAllUsers" resultMap="baseResultMap">
+        select id, name, password from user
+    </select>
+
+</mapper>
